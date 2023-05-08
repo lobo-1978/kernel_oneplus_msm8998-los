@@ -673,6 +673,7 @@
 		reg = <0x20>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <125 0x2008>;
+		wakeup-source;
 		vcc_i2c_1v8-supply = <&pm8998_l6>;
 		vdd_2v8-supply = <&pm8998_l28>;
 		synaptics,tx-rx-num = <15 30>;
