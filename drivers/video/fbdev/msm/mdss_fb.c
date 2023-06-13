@@ -48,6 +48,7 @@
 #include <linux/dma-buf.h>
 #include <sync.h>
 #include <sw_sync.h>
+#include <linux/devfreq_boost.h>
 
 #include "mdss_fb.h"
 #include "mdss_mdp_splash_logo.h"
@@ -57,6 +58,10 @@
 #include "mdss_mdp.h"
 
 #include "mdss_livedisplay.h"
+
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+#include "flicker_free.h"
+#endif
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -1735,6 +1740,10 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 
 	if ((pdata) && (pdata->set_backlight)) {
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+		/* Update mfd */
+		mdss_fb_update_flicker_free_mfd(mfd);
+#endif
 		if (mfd->mdp.ad_calc_bl)
 			(*mfd->mdp.ad_calc_bl)(mfd, temp, &temp,
 							&ad_bl_notify_needed);
@@ -1779,6 +1788,10 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	if (!mfd->allow_bl_update) {
 		pdata = dev_get_platdata(&mfd->pdev->dev);
 		if ((pdata) && (pdata->set_backlight)) {
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+			/* Update mfd */
+			mdss_fb_update_flicker_free_mfd(mfd);
+#endif
 			mfd->bl_level = mfd->unset_bl_level;
 			temp = mfd->bl_level;
 			if (mfd->mdp.ad_calc_bl)
@@ -5071,6 +5084,7 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = mdss_fb_mode_switch(mfd, dsi_mode);
 		break;
 	case MSMFB_ATOMIC_COMMIT:
+		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
 		ret = mdss_fb_atomic_commit_ioctl(info, argp, file);
 		break;
 

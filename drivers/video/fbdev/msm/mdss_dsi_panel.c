@@ -28,6 +28,14 @@
 #include "mdss_debug.h"
 #include "mdss_livedisplay.h"
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+#include "flicker_free.h"
+#endif
+
 #define DT_CMD_HDR 6
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
@@ -885,6 +893,12 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+	/* Remap backlight value prior to HBM */
+	if (bl_level != 0)
+		bl_level = mdss_panel_calc_backlight(bl_level);
+#endif
+
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
 	 * for the backlight brightness. If the brightness is less
@@ -951,6 +965,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
 
 	pinfo = &pdata->panel_info;
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -1060,6 +1078,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 		mdss_dba_utils_video_off(pinfo->dba_data);
 		mdss_dba_utils_hdcp_enable(pinfo->dba_data, false);
 	}
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
 
 end:
 	pr_debug("%s:-\n", __func__);
@@ -2641,6 +2663,12 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 		pr_info("%s: found new timing \"%s\" (%pK)\n", __func__,
 				np->name, &pt->timing);
 	}
+
+#ifdef CONFIG_FB_MSM_MDSS_FLICKER_FREE
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-elvss-off-thresh", &tmp);
+	if (!rc)
+		mdss_panel_set_elvss_off_threshold(tmp);
+#endif
 
 	return 0;
 }
